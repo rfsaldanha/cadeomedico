@@ -19,20 +19,19 @@ pf_data <- tbl(conn, "pf_data")
 
 ui <- dashboardPage(
   skin = "green",
-  dashboardHeader(title = "Cadê o médico?"),
+  dashboardHeader(title = "Quem trabalha aqui?"),
   dashboardSidebar(disable = TRUE),
   dashboardBody(
-    # Boxes need to be put in a row (or column)
     fluidRow(
       box(
-        status = "warning", solidHeader = TRUE, collapsible = TRUE, width = 12,
+        status = "primary", solidHeader = TRUE, collapsible = TRUE, width = 12,
         title = "Onde você está?",
         uiOutput("estado"),
         uiOutput("municipio"),
         uiOutput("unidade_saude")
       ),
       box(
-        status = "warning", solidHeader = TRUE, collapsible = TRUE, width = 12,
+        status = "primary", solidHeader = TRUE, collapsible = TRUE, width = 12,
         title = "Sobre a unidade de saúde",
         uiOutput("tp_unid"),
         uiOutput("tpgestao"),
@@ -43,18 +42,21 @@ ui <- dashboardPage(
         uiOutput("qtleitp3")
       ),
       box(
-        status = "warning", solidHeader = TRUE, collapsible = TRUE, width = 12,
+        status = "primary", solidHeader = TRUE, collapsible = TRUE, width = 12,
         title = "Quem trabalha aqui?",
         uiOutput("profissao"),
-        dataTableOutput("profissionais")
+        dataTableOutput("profissionais"),
+        p("CH: Carga horária semanal")
       ),
       box(
         status = "warning", solidHeader = TRUE, collapsible = TRUE, width = 12,
         title = "Sobre os dados",
+        p("Competência: maio de 2023."),
+        p(),
         p("Os dados utilizados neste projetos são do Cadastro Nacional de Estabelecimentos de Saúde (CNES) do DataSUS / Ministério da Saúde."),
         p("São exibidos apenas as unidades de saúde com algum vínculo com o Sistema Único de Saúde (SUS)."),
+        p("É responsabilidade do estabelecimento vincular os profissionais que fazem parte do corpo clínico, sócios e colaboradores."),
         p("Os dados estão errados? Peça para a unidade atualizar o seu cadastro no CNES."),
-        p("Dados de outubro de 2019."),
         p("Dúvidas? Mande um e-mail para raphael.saldanha@icict.fiocruz.br")
       )
     )
@@ -92,8 +94,6 @@ server <- function(input, output) {
     
     st <- st_data %>%
       filter(CODUFMUN == !!input$municipio) %>%
-      filter(PF_PJ == "Pessoa jurídica") %>%
-      filter(VINC_SUS == "Sim") %>%
       select(CNES, FANTASIA) %>%
       arrange(FANTASIA) %>%
       as_tibble() %>%
@@ -148,7 +148,7 @@ server <- function(input, output) {
     
     pf_data %>%
       filter(CNES == !!input$unidade_saude) %>%
-      select(OCUPACAO, NOMEPROF, DS_VINC, HORAHOSP, HORA_AMB, HORAOUTR) %>%
+      select(OCUPACAO, NOMEPROF, DS_VINC, HORAHOSP, HORA_AMB, HORAOUTR, TURNO_AT) %>%
       arrange(OCUPACAO, NOMEPROF) %>%
       as_tibble()
   })
@@ -162,7 +162,7 @@ server <- function(input, output) {
     
     prof <- setNames(prof$OCUPACAO, prof$OCUPACAO)
     
-    selectInput("profissao", label = "Profissão", choices = prof, multiple = FALSE)
+    selectInput("profissao", label = "Ocupação", choices = prof, multiple = FALSE)
   })
   
   output$profissionais <- renderDataTable({
@@ -174,7 +174,8 @@ server <- function(input, output) {
              "Vínculo" = DS_VINC, 
              "CH Hospital" = HORAHOSP, 
              "CH Ambulatório" = HORA_AMB,
-             "CH Outros" = HORAOUTR)
+             "CH Outros" = HORAOUTR,
+             "Turno" = TURNO_AT)
   }, options = list(scrollX = TRUE))
   
 }
