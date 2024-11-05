@@ -52,7 +52,7 @@ ui <- dashboardPage(
       box(
         status = "warning", solidHeader = TRUE, collapsible = TRUE, width = 12,
         title = "Sobre os dados",
-        p("Competência: maio de 2023."),
+        p("Competência: setembro de 2024."),
         p(),
         p("Os dados utilizados neste projetos são do Cadastro Nacional de Estabelecimentos de Saúde (CNES) do DataSUS / Ministério da Saúde."),
         p("São exibidos apenas as unidades de saúde com algum vínculo com o Sistema Único de Saúde (SUS)."),
