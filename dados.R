@@ -1,14 +1,26 @@
 # Packages
-library(tidyverse)
+library(dplyr)
+library(tibble)
+library(stringr)
+library(lubridate)
+library(curl)
+library(fs)
+library(read.dbc)
 library(microdatasus)
 library(RSQLite)
 library(DBI)
 
+s3_base <- "https://datasus-ftp-mirror.nyc3.cdn.digitaloceanspaces.com"
+
+year_query <- "24"
+month_query <- "09"
+
 # Download reference tables
-ref_url <- "https://datasus-ftp-mirror.nyc3.cdn.digitaloceanspaces.com/CNES/200508_/Auxiliar/TAB_CNES.zip"
-temp_file <- tempfile()
-temp_dir <- tempdir()
-download.file(url = ref_url, destfile = temp_file, mode = "wb")
+ref_url <- path(s3_base, "/CNES/200508_/Auxiliar/TAB_CNES.zip")
+temp_file <- file_temp()
+temp_dir <- path_temp()
+curl_download(url = ref_url, destfile = temp_file, mode = "wb", quiet = FALSE)
+
 unzip(zipfile = temp_file, exdir = temp_dir)
 
 # Reference tables
@@ -22,13 +34,45 @@ cbo <- foreign::read.dbf(file = paste0(temp_dir, "/DBF/CBO.dbf"), as.is = TRUE)
 cadger <- foreign::read.dbf(file = paste0(temp_dir, "/DBF/CADGERBR.dbf"), as.is = TRUE) %>%
   select(CNES, FANTASIA, RSOC_MAN)
 
-# Download data
+# Download CNES data
 options(timeout=500)
+ufs <- c("AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO")
 
-cnes_st <- fetch_datasus(year_start = 2024, month_start = 9, year_end = 2024, month_end = 9, information_system = "CNES-ST")
+st_files <- paste0("ST", ufs, year_query, month_query, ".dbc")
+pf_files <- paste0("PF", ufs, year_query, month_query, ".dbc")
+
+res_st <- multi_download(
+  urls = path(s3_base, "/CNES/200508_/Dados/ST/", st_files), 
+  destfiles = path(temp_dir, st_files), 
+  progress = TRUE
+)
+
+res_pf <- multi_download(
+  urls = path(s3_base, "/CNES/200508_/Dados/PF/", pf_files), 
+  destfiles = path(temp_dir, pf_files), 
+  progress = TRUE
+)
+
+# Read CNES data
+cnes_st <- tibble()
+for(f in res_st$destfile){
+  tmp_st <- read.dbc(f, as.is = TRUE)
+  cnes_st <- bind_rows(cnes_st, tmp_st)
+  rm(tmp_st)
+}
+rm(f)
+
+cnes_pf <- tibble()
+for(f in res_pf$destfile){
+  tmp_pf <- read.dbc(f, as.is = TRUE)
+  cnes_pf <- bind_rows(cnes_pf, tmp_pf)
+  rm(tmp_pf)
+}
+rm(f)
+
+
+# Save raw data
 saveRDS(cnes_st, "raw_data/cnes_st.rds")
-
-cnes_pf <- fetch_datasus(year_start = 2024, month_start = 9, year_end = 2024, month_end = 9, information_system = "CNES-PF")
 saveRDS(cnes_pf, "raw_data/cnes_pf.rds")
 
 # Pre-process data
