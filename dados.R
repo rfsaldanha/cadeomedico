@@ -4,24 +4,31 @@ library(microdatasus)
 library(RSQLite)
 library(DBI)
 
+# Download reference tables
+ref_url <- "https://datasus-ftp-mirror.nyc3.cdn.digitaloceanspaces.com/CNES/200508_/Auxiliar/TAB_CNES.zip"
+temp_file <- tempfile()
+temp_dir <- tempdir()
+download.file(url = ref_url, destfile = temp_file, mode = "wb")
+unzip(zipfile = temp_file, exdir = temp_dir)
+
 # Reference tables
-vinc <- foreign::read.dbf(file = "../../Downloads/TAB_CNES/DBF/VINCULO.dbf", as.is = TRUE) %>%
+vinc <- foreign::read.dbf(file = paste0(temp_dir, "/DBF/VINCULO.dbf"), as.is = TRUE) %>%
   mutate(CHAVE = as.character(as.numeric(CHAVE))) %>%
   mutate(DS_REGRA = str_remove_all(DS_REGRA, "[:digit:]")) %>%
   mutate(DS_REGRA = str_remove_all(DS_REGRA, "/")) %>%
   mutate(DS_REGRA = str_squish(DS_REGRA))
 
-cbo <- foreign::read.dbf(file = "../../Downloads/TAB_CNES/DBF/CBO.dbf", as.is = TRUE)
-cadger <- foreign::read.dbf(file = "../../Downloads/TAB_CNES/DBF/CADGERBR.dbf", as.is = TRUE) %>%
+cbo <- foreign::read.dbf(file = paste0(temp_dir, "/DBF/CBO.dbf"), as.is = TRUE)
+cadger <- foreign::read.dbf(file = paste0(temp_dir, "/DBF/CADGERBR.dbf"), as.is = TRUE) %>%
   select(CNES, FANTASIA, RSOC_MAN)
 
 # Download data
 options(timeout=500)
 
-cnes_st <- fetch_datasus(year_start = 2023, month_start = 5, year_end = 2023, month_end = 5, information_system = "CNES-ST")
+cnes_st <- fetch_datasus(year_start = 2024, month_start = 9, year_end = 2024, month_end = 9, information_system = "CNES-ST")
 saveRDS(cnes_st, "raw_data/cnes_st.rds")
 
-cnes_pf <- fetch_datasus(year_start = 2023, month_start = 5, year_end = 2023, month_end = 5, information_system = "CNES-PF")
+cnes_pf <- fetch_datasus(year_start = 2024, month_start = 9, year_end = 2024, month_end = 9, information_system = "CNES-PF")
 saveRDS(cnes_pf, "raw_data/cnes_pf.rds")
 
 # Pre-process data
